@@ -474,7 +474,7 @@ docker run --rm -it \
   -e STORAGE=local \
   -e STORAGE_LOCAL_ROOTDIR=/charts \
   -v $(pwd)/charts:/charts \
-  ghcr.io/helm/chartmuseum:v0.16.2
+  ghcr.io/helm/chartmuseum:v0.16.3
 ```
 
 Example usage (S3):
@@ -487,7 +487,7 @@ docker run --rm -it \
   -e STORAGE_AMAZON_PREFIX="" \
   -e STORAGE_AMAZON_REGION="us-east-1" \
   -v ~/.aws:/home/chartmuseum/.aws:ro \
-  ghcr.io/helm/chartmuseum:v0.16.2
+  ghcr.io/helm/chartmuseum:v0.16.3
 ```
 
 ### Helm Chart

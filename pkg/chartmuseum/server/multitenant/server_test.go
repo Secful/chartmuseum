@@ -951,6 +951,37 @@ func (suite *MultiTenantServerTestSuite) TestPerChartLimit() {
 	suite.Equal(200, res.Status(), "200 GET /api/charts/mychart-service-0.0.1")
 }
 
+func (suite *MultiTenantServerTestSuite) TestPerChartLimitWithFormData() {
+	ns := "per-chart-limit"
+
+	expectUploadFiles := []string{
+		testServiceTarballPathV0,
+		testTarballPathV0,
+		testTarballPathV2,
+		testTarballPath,
+	}
+
+	for _, f := range expectUploadFiles {
+		buf, w := suite.getBodyWithMultipartFormFiles([]string{"chart"}, []string{f})
+		res := suite.doRequest(ns, "POST", "/api/charts", buf, w.FormDataContentType())
+		suite.Equal(201, res.Status(), "201 POST /api/charts")
+	}
+
+	time.Sleep(time.Second)
+
+	res := suite.doRequest(ns, "GET", "/api/charts/mychart/0.2.0", nil, "")
+	suite.Equal(200, res.Status(), "200 GET /api/charts/mychart-0.2.0")
+
+	res = suite.doRequest(ns, "GET", "/api/charts/mychart/0.1.0", nil, "")
+	suite.Equal(200, res.Status(), "200 GET /api/charts/mychart-0.1.0")
+
+	res = suite.doRequest(ns, "GET", "/api/charts/mychart/0.0.1", nil, "")
+	suite.Equal(404, res.Status(), "200 GET /api/charts/mychart-0.0.1")
+
+	res = suite.doRequest(ns, "GET", "/api/charts/mychart-service/0.0.1", nil, "")
+	suite.Equal(200, res.Status(), "200 GET /api/charts/mychart-service-0.0.1")
+}
+
 func (suite *MultiTenantServerTestSuite) TestMaxUploadSizeServer() {
 	// trigger 413s, "request too large"
 	content, err := os.ReadFile(testTarballPath)
@@ -971,13 +1002,16 @@ func (suite *MultiTenantServerTestSuite) TestMaxUploadSizeServer() {
 }
 
 func (suite *MultiTenantServerTestSuite) TestMetrics() {
+	res := suite.doRequest("depth1", "GET", "bad-url", nil, "")
+	suite.Equal(404, res.Status(), "404 GET bad-url")
+
 	apiPrefix := pathutil.Join("/api", "a")
 
 	content, err := os.ReadFile(testTarballPath)
 	suite.Nil(err, "error opening test tarball")
 
 	body := bytes.NewBuffer(content)
-	res := suite.doRequest("depth1", "POST", fmt.Sprintf("%s/charts", apiPrefix), body, "")
+	res = suite.doRequest("depth1", "POST", fmt.Sprintf("%s/charts", apiPrefix), body, "")
 	suite.Equal(201, res.Status(), fmt.Sprintf("201 post %s/charts", apiPrefix))
 
 	otherChart, err := os.ReadFile(testTarballPathV2)
@@ -1011,7 +1045,8 @@ func (suite *MultiTenantServerTestSuite) TestMetrics() {
 		if totalChartsServed && totalVersionsServed {
 			return true
 		}
-		return false
+		notServeBadURL := !strings.Contains(metrics, "bad-url")
+		return notServeBadURL
 	}, 10*time.Second, time.Second)
 
 	// Ensure that we have the Gauges as documented
